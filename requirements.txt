@@ -1,0 +1,11 @@
+scikit-learn==1.5.1
+xgboost
+streamlit
+pandas
+joblib
+tensorflow
+Pillow
+numpy
+lime
+matplotlib
+scikit-image
