@@ -311,27 +311,28 @@ elif page == "Image Prediction (CNN)":
 
 # ---- Page 3: DNN Image Prediction ----
 elif page == "Image Prediction (DNN)":
-    st.subheader("Predict Label of an Image using CNN or DNN")
+    st.markdown("[Go to the DNN Image Prediction App](https://dlassignmentgroup3-dnn.streamlit.app/)")
 
-    # File uploader for image data
-    st.write("#### Upload an image file:")
-    uploaded_image = st.file_uploader("Choose an image", type=["png", "jpg", "jpeg"])
+    # # File uploader for image data
+    # st.write("#### Upload an image file:")
+    # uploaded_image = st.file_uploader("Choose an image", type=["png", "jpg", "jpeg"])
 
-    if uploaded_image is not None:
-        # Load and display the image
-        image = Image.open(uploaded_image)
-        st.image(image, caption="Uploaded Image", use_column_width=True)
+    # if uploaded_image is not None:
+    #     # Load and display the image
+    #     image = Image.open(uploaded_image)
+    #     st.image(image, caption="Uploaded Image", use_column_width=True)
 
-        # Model selection
-        model_choice_i = "DNN"  # st.selectbox("Select the Model", ["CNN", "DNN"])
-        st.write(f"Selected model: {model_choice_i}")
+    #     # Model selection
+    #     model_choice_i = "DNN"  # st.selectbox("Select the Model", ["CNN", "DNN"])
+    #     st.write(f"Selected model: {model_choice_i}")
 
-        # Preprocess the image based on the selected model
-        preprocessed_image = preprocess_image(image, model_choice_i)
+    #     # Preprocess the image based on the selected model
+    #     preprocessed_image = preprocess_image(image, model_choice_i)
 
-        # Prediction
-        if st.button("🔍 Predict"):
-            st.write(f"Model is taking too long to generate the output, please use another model.")
+    #     # Prediction
+    #     if st.button("🔍 Predict"):
+    #         st.write(f"Model is taking too long to generate the output, please use another model.")
+
             # try:
             #     predictions = get_predictions(dnn_image_model, preprocessed_image, model_choice_i)
             #     predicted_class = np.argmax(predictions[0])
