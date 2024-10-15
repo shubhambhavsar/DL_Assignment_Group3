@@ -14,7 +14,7 @@ from skimage.segmentation import mark_boundaries
 
 # Load models and preprocessors
 try:
-    # preprocessor = joblib.load(r'is_validated/preprocessor_pipeline.pkl')
+    preprocessor = joblib.load(r'is_validated/preprocessor_pipeline.pkl')
     # dnn_model = load_model(r"parking_prediction_models/dnn_model.h5")  # Keras DNN model
     # ada_model = joblib.load(r"parking_prediction_models/adaboost_model.pkl")  # AdaBoost model
     # xgb_model = joblib.load(r"parking_prediction_models/xgboost_model.pkl")  # XGBoost model
