@@ -20,7 +20,7 @@ try:
     xgb_model = joblib.load(r"parking_prediction_models/xgboost_model.pkl")  # XGBoost model
     ensemble_model = joblib.load(r"parking_prediction_models/ensemble_model.pkl")  # Ensemble model combining Ada, XGBoost, RandomForest
     cnn_model = load_model(r"parking_prediction_models/CNN_Model.h5")  # CNN model for image classification
-    dnn_image_model = None
+    dnn_image_model = joblib.load(r"parking_prediction_models/dnn_image_model.pkl")  # DNN model for image classification
 except Exception as e:
     st.error(f"❌ Error loading models: {e}")
     st.stop()
@@ -118,10 +118,12 @@ def get_predictions(model, image, model_type):
 st.title("🚗 Business Parking and Image Labeling with Interpretability")
 
 # Create tabs
-tab1, tab2 = st.tabs(["CSV Prediction (Parking)", "Image Prediction (Label)"])
+# tab1, tab2 = st.tabs(["CSV Prediction (Parking)", "Image Prediction (Label)"])
+# Navigation sidebar to switch between pages
+page = st.sidebar.selectbox("Select a Page", ["CSV Prediction (Parking)", "Image Prediction (CNN)", "Image Prediction (DNN)"])
 
-# ---- Tab 1: CSV Prediction for Business Parking ----
-with tab1:
+# ---- Page 1: CSV Prediction for Business Parking ----
+if page == "CSV Prediction (Parking)":
     st.subheader("Predict Parking Availability and Validation from CSV Data")
 
     # File uploader for CSV data
@@ -196,8 +198,9 @@ with tab1:
                     fig = exp.as_pyplot_figure()
                     st.pyplot(fig)
 
-# ---- Tab 2: Image Label Prediction ----
-with tab2:
+# ---- Page 2: CNN Image Prediction ----
+elif page == "Image Prediction (CNN)":
+    
     st.subheader("Predict Label of an Image using CNN or DNN")
 
     # File uploader for image data
@@ -210,7 +213,7 @@ with tab2:
         st.image(image, caption="Uploaded Image", use_column_width=True)
 
         # Model selection
-        model_choice_i = st.selectbox("Select the Model", ["CNN"])
+        model_choice_i = "CNN" #st.selectbox("Select the Model", ["CNN", "DNN"])
         st.write(f"Selected model: {model_choice_i}")
 
         # Preprocess the image based on the selected model
@@ -218,7 +221,7 @@ with tab2:
 
         # Prediction
         if st.button("🔍 Predict"):
-            predictions = get_predictions(cnn_model if model_choice_i == 'CNN' else dnn_image_model, preprocessed_image, model_choice_i)
+            predictions = get_predictions(cnn_model, preprocessed_image, model_choice_i)
             predicted_class = np.argmax(predictions[0])
             predicted_label = class_labels[predicted_class]
 
@@ -237,7 +240,117 @@ with tab2:
                     processed_img = preprocess_image(img_resized, model_choice_i)
                     processed_images.append(processed_img)
                 processed_images = np.vstack(processed_images)  # Stack the images for batch prediction
-                return dnn_image_model.predict(processed_images) if model_choice_i == 'DNN' else cnn_model.predict(processed_images)
+                
+                return cnn_model.predict(processed_images)
+
+            # Use LIME to explain the instance
+            explanation = explainer.explain_instance(
+                np.array(image.resize((128, 128))) / 255.0,  # Resize and normalize
+                lime_predict,  # Pass the LIME prediction function
+                top_labels=5,
+                hide_color=0,
+                num_samples=1000
+            )
+
+            # Get the image and mask for the predicted class
+            temp, mask = explanation.get_image_and_mask(
+                predicted_class,
+                positive_only=True,
+                num_features=5,
+                hide_rest=True
+            )
+
+            # Visualize the results
+            st.write("### 🧠 LIME Explanation")
+            fig, ax = plt.subplots(1, 3, figsize=(15, 5))
+
+            # Original image
+            ax[0].imshow(image)
+            ax[0].set_title('Original Image')
+            ax[0].axis('off')
+
+            # LIME explanation
+            ax[1].imshow(mark_boundaries(temp / 2 + 0.5, mask))
+            ax[1].set_title(f'LIME Explanation\nPredicted Class: {predicted_label}')
+            ax[1].axis('off')
+
+            # Heatmap
+            ax[2].imshow(mask, cmap='hot', interpolation='nearest')
+            ax[2].set_title('Heatmap')
+            ax[2].axis('off')
+
+            # Display the LIME explanations as a plot
+            st.pyplot(fig)
+
+            # Show the top 5 features contributing to the prediction
+            st.write("### 🔍 Top 5 Features Contributing to the Prediction:")
+            ind = explanation.top_labels[0]
+            dict_heatmap = dict(explanation.local_exp[ind])
+            sorted_features = sorted(dict_heatmap.items(), key=lambda x: x[1], reverse=True)
+
+            # Create a grid layout with 2 columns
+            columns = st.columns(2)
+
+            # Iterate through the top 5 features and display them in the grid
+            for i, (feature, importance) in enumerate(sorted_features[:5]):
+                # Split into columns for a grid layout
+                col = columns[i % 2]  # Alternate between the two columns
+
+                with col:
+                    # Display the importance score and description
+                    st.write(f"**Region {feature}: Importance {importance:.4f}**")
+
+                    # Get the image and mask for the current feature
+                    temp, mask = explanation.get_image_and_mask(ind, positive_only=True, num_features=feature, hide_rest=False)
+
+                    # Plot the image with boundaries of the important feature
+                    fig, ax = plt.subplots()
+                    ax.imshow(mark_boundaries(temp / 2 + 0.5, mask))
+                    ax.axis('off')  # Hide axis
+                    st.pyplot(fig)
+
+# ---- Page 3: DNN Image Prediction ----
+elif page == "Image Prediction (DNN)":
+    st.subheader("Predict Label of an Image using CNN or DNN")
+
+    # File uploader for image data
+    st.write("#### Upload an image file:")
+    uploaded_image = st.file_uploader("Choose an image", type=["png", "jpg", "jpeg"])
+
+    if uploaded_image is not None:
+        # Load and display the image
+        image = Image.open(uploaded_image)
+        st.image(image, caption="Uploaded Image", use_column_width=True)
+
+        # Model selection
+        model_choice_i = "DNN" #st.selectbox("Select the Model", ["CNN", "DNN"])
+        st.write(f"Selected model: {model_choice_i}")
+
+        # Preprocess the image based on the selected model
+        preprocessed_image = preprocess_image(image, model_choice_i)
+
+        # Prediction
+        if st.button("🔍 Predict"):
+            predictions = get_predictions(dnn_image_model, preprocessed_image, model_choice_i)
+            predicted_class = np.argmax(predictions[0])
+            predicted_label = class_labels[predicted_class]
+
+            # Display predicted label
+            st.write(f"### 🎯 Predicted Label: **{predicted_label}**")
+
+            # Generate LIME explanation
+            explainer = lime_image.LimeImageExplainer()
+
+            # LIME explanation function
+            def lime_predict(images):
+                # Preprocess the images for predictions
+                processed_images = []
+                for img in images:
+                    img_resized = Image.fromarray((img * 255).astype(np.uint8)).resize((128, 128))  # Resize to match input size
+                    processed_img = preprocess_image(img_resized, model_choice_i)
+                    processed_images.append(processed_img)
+                processed_images = np.vstack(processed_images)  # Stack the images for batch prediction
+                return dnn_image_model.predict(processed_images)
 
             # Use LIME to explain the instance
             explanation = explainer.explain_instance(
